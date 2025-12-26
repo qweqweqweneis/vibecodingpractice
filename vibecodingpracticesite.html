@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>태극쌤의 바이브 코딩 실습실</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700&family=Jua&display=swap');
+        
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #f0f4f8;
+        }
+
+        .title-font {
+            font-family: 'Jua', sans-serif;
+        }
+
+        .gemini-gradient {
+            background: linear-gradient(135deg, #4285f4, #9b51e0, #e91e63);
+        }
+
+        .chat-bubble {
+            border-radius: 20px;
+            padding: 12px 18px;
+            margin-bottom: 10px;
+            max-width: 85%;
+            word-break: keep-all;
+        }
+
+        .user-bubble {
+            background-color: #3b82f6;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .ai-bubble {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal-overlay {
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <header class="max-w-4xl mx-auto text-center mb-8">
+        <h1 class="title-font text-5xl text-blue-600 mb-4">태극쌤의 바이브 코딩 실습실</h1>
+        <p class="text-gray-600 text-lg">인공지능과 함께 교육용 사이트를 설계하고 즉시 실행해 보세요</p>
+    </header>
+
+    <main class="max-w-4xl mx-auto space-y-8 pb-10">
+        
+        <section class="text-center">
+            <button onclick="toggleModal(true)" class="inline-flex items-center px-6 py-3 bg-white border-2 border-blue-500 text-blue-600 rounded-full font-bold hover:bg-blue-50 transition-all shadow-md">
+                📖 입문자를 위한 바이브 코딩 설명서
+            </button>
+        </section>
+
+        <!-- 단계 1: 아이디어 프롬프트 생성하기 -->
+        <section class="gemini-gradient p-1 rounded-2xl shadow-xl text-white">
+            <div class="bg-gray-900 bg-opacity-95 p-6 rounded-2xl">
+                <h2 class="title-font text-2xl mb-4 flex items-center">
+                    <span class="bg-white text-blue-600 w-8 h-8 rounded-full flex justify-center items-center mr-2 text-sm shadow-sm">1</span>
+                    아이디어 프롬프트 생성하기
+                </h2>
+                
+                <div class="flex flex-col md:flex-row gap-3 mb-4">
+                    <input type="text" id="targetInput" placeholder="예: 초등 6학년" class="flex-1 p-3 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white">
+                    <input type="text" id="subjectInput" placeholder="예: 과학, 전기의 이용 단원 정리" class="flex-1 p-3 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-white">
+                    <button onclick="generateIdeaWithGemini()" id="genBtn" class="bg-white text-gray-900 font-bold px-6 py-3 rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-2">
+                        <span id="genBtnText">✨ 아이디어 생성</span>
+                    </button>
+                </div>
+
+                <div id="ideaProgressArea" class="hidden mb-6 p-4 bg-purple-900/40 rounded-xl border border-purple-500/30">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-xs font-bold text-purple-300">AI가 창의적인 아이디어를 구상 중입니다...</span>
+                        <span id="ideaPercentText" class="text-xs font-bold text-purple-300">0%</span>
+                    </div>
+                    <div class="w-full bg-purple-900 rounded-full h-2 overflow-hidden">
+                        <div id="ideaProgressBar" class="bg-purple-400 h-full transition-all duration-500" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div id="resultArea" class="hidden space-y-4">
+                    <div class="p-5 bg-gray-800 rounded-xl border border-purple-500/50">
+                        <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
+                            <span class="text-purple-400 font-bold text-sm">추천 프롬프트</span>
+                            <div class="flex gap-2">
+                                <button id="copyBtn" onclick="copyPrompt()" class="text-xs bg-purple-600 px-3 py-1.5 rounded-full hover:bg-purple-500 transition font-bold flex items-center gap-1">
+                                    <span>복사하기</span>
+                                </button>
+                            </div>
+                        </div>
+                        <p id="ideaText" class="text-white italic leading-relaxed text-sm md:text-base mb-4 bg-gray-950 p-4 rounded-lg whitespace-pre-wrap"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 단계 2: 사이트 제작 요청하기 -->
+        <section class="bg-white p-6 rounded-2xl shadow-lg">
+            <h2 class="title-font text-2xl text-gray-800 mb-4 flex items-center">
+                <span class="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex justify-center items-center mr-2 text-sm">2</span>
+                사이트 제작 요청하기
+            </h2>
+            
+            <div id="chat-window" class="bg-gray-50 border border-gray-200 rounded-xl p-4 h-[300px] flex flex-col mb-4 overflow-y-auto">
+                <div class="ai-bubble chat-bubble">반갑습니다. 태극쌤 실습실입니다. 복사한 내용을 붙여넣고 [전송]을 눌러주세요.</div>
+            </div>
+
+            <div id="progressArea" class="hidden mb-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <div class="flex justify-between mb-2">
+                    <span id="statusText" class="text-xs font-bold text-blue-600">AI가 코드를 작성하고 있습니다</span>
+                    <span id="percentText" class="text-xs font-bold text-blue-600">0%</span>
+                </div>
+                <div class="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden">
+                    <div id="progressBar" class="bg-blue-600 h-full transition-all duration-500" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <div id="inputArea" class="flex gap-2 bg-gray-100 p-2 rounded-xl border border-gray-200">
+                <textarea id="userInput" rows="2" placeholder="내용을 붙여넣으세요" class="flex-1 p-3 rounded-lg border-none focus:ring-0 bg-transparent text-sm resize-none"></textarea>
+                <button onclick="handleSend()" id="sendBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold transition">전송</button>
+            </div>
+
+            <div id="finalAction" class="hidden mt-6 text-center">
+                <div class="bg-green-50 p-6 rounded-2xl border-2 border-dashed border-green-500">
+                    <h3 class="font-bold text-green-800 text-xl mb-4">사이트 생성이 완료되었습니다</h3>
+                    <button onclick="openResult()" class="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg transform hover:scale-105 transition flex items-center justify-center mx-auto mb-4">
+                        생성된 사이트 새 창에서 열기
+                    </button>
+                    <p class="text-amber-600 text-xs italic">※ 창이 뜨지 않는다면 팝업 차단을 해제해 주세요.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 단계 3: 실전! 제미나이로 이동하기 -->
+        <section class="bg-gray-900 p-8 rounded-2xl shadow-2xl text-center border-t-4 border-blue-500">
+            <h2 class="title-font text-2xl text-white mb-8 flex items-center justify-center">
+                <span class="bg-blue-600 text-white w-8 h-8 rounded-full flex justify-center items-center mr-2 text-sm">3</span>
+                실전! 제미나이로 이동하기
+            </h2>
+            <a href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-3 bg-white text-gray-900 px-10 py-5 rounded-2xl font-black text-xl hover:bg-blue-50 transition-all transform hover:-translate-y-1 shadow-[0_10px_20px_rgba(255,255,255,0.1)] group">
+                🚀 제미나이로 이동하기
+                <svg class="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+            </a>
+        </section>
+
+        <footer class="text-center pt-8 border-t border-gray-200">
+            <p class="text-gray-500 text-sm">
+                자세한 내용은 <a href="https://blog.naver.com/k_survival/" target="_blank" rel="noopener noreferrer" class="text-blue-600 font-bold hover:underline decoration-blue-400 decoration-2 underline-offset-4 transition-all">숏.한국/태극쌤/블로그</a>를 참고해주세요.
+            </p>
+        </footer>
+    </main>
+
+    <!-- 입문자 설명서 모달 -->
+    <div id="guideModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="modal-overlay absolute inset-0 bg-black bg-opacity-60" onclick="toggleModal(false)"></div>
+        <div class="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <header class="p-6 bg-blue-600 text-white flex justify-between items-center shrink-0">
+                <h2 class="title-font text-2xl">
+                    입문자를 위한 바이브 코딩 4단계
+                </h2>
+                <button onclick="toggleModal(false)" class="text-white hover:rotate-90 transition-transform p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18"></path></svg>
+                </button>
+            </header>
+            
+            <div class="p-8 overflow-y-auto space-y-8 text-gray-700">
+                <div class="flex gap-4">
+                    <div class="shrink-0 w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center font-bold text-xl">1</div>
+                    <div>
+                        <h3 class="font-bold text-lg mb-1 text-gray-900">제미나이 사이트 접속하기</h3>
+                        <p class="text-sm leading-relaxed text-gray-600">인터넷 주소창에 <strong>gemini.google.com</strong>을 입력하고 로그인하세요.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <div class="shrink-0 w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center font-bold text-xl">2</div>
+                    <div>
+                        <h3 class="font-bold text-lg mb-1 text-gray-900">Canvas 모델 선택하기</h3>
+                        <p class="text-sm leading-relaxed text-gray-600">모델 선택창에서 <strong>Canvas</strong>를 선택하세요.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <div class="shrink-0 w-12 h-12 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center font-bold text-xl">3</div>
+                    <div>
+                        <h3 class="font-bold text-lg mb-1 text-gray-900">원하는 사이트 모습 설명하기</h3>
+                        <p class="text-sm leading-relaxed text-gray-600">만들고 싶은 사이트를 설명하세요.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <div class="shrink-0 w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center font-bold text-xl">4</div>
+                    <div>
+                        <h3 class="font-bold text-lg mb-1 text-gray-900">공유하기 눌러 실제 사이트 열기</h3>
+                        <p class="text-sm leading-relaxed text-gray-600">제미나이가 코드를 생성하면, 화면 우측 상단의 <strong>[공유]</strong> 또는 <strong>[미리보기]</strong>를 눌러보세요.</p>
+                    </div>
+                </div>
+
+                <div class="p-5 bg-blue-50 rounded-2xl border border-blue-200">
+                    <h4 class="font-bold text-blue-800 text-sm mb-3">
+                        선생님을 위한 한 줄 꿀팁
+                    </h4>
+                    <ul class="text-xs text-blue-800 space-y-2">
+                        <li>• 수정이 필요하면 제미나이에게 다시 요청해보세요.</li>
+                        <li>• "##너는 30년차 베테랑 초등교사야"처럼 페르소나를 부여하면 결과가 더 좋아집니다.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <footer class="p-4 bg-gray-50 text-center shrink-0">
+                <button onclick="toggleModal(false)" class="px-8 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition">준비 완료</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- 복사를 위한 보조 영역 -->
+    <textarea id="hiddenCopyText" style="position: absolute; left: -9999px; top: 0;"></textarea>
+
+    <script>
+        const apiKey = ""; 
+        let generatedCode = "";
+
+        async function callGemini(prompt, systemInstruction = "") {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined
+            };
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i <= delays.length; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error('API request failed');
+                    const data = await response.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text;
+                } catch (err) {
+                    if (i === delays.length) throw err;
+                    await new Promise(r => setTimeout(r, delays[i]));
+                }
+            }
+        }
+
+        function toggleModal(show) {
+            const modal = document.getElementById('guideModal');
+            show ? modal.classList.remove('hidden') : modal.classList.add('hidden');
+        }
+
+        async function generateIdeaWithGemini() {
+            const target = document.getElementById('targetInput').value;
+            const subject = document.getElementById('subjectInput').value;
+            if (!target || !subject) return alert("대상과 주제를 입력해주세요.");
+
+            const btnText = document.getElementById('genBtnText');
+            btnText.innerHTML = `<div class="loading-spinner"></div>`;
+            const progressArea = document.getElementById('ideaProgressArea');
+            const progressBar = document.getElementById('ideaProgressBar');
+            const percentText = document.getElementById('ideaPercentText');
+            progressArea.classList.remove('hidden');
+            document.getElementById('resultArea').classList.add('hidden');
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 4; if (progress >= 95) progress = 95;
+                progressBar.style.width = `${progress}%`;
+                percentText.innerText = `${progress}%`;
+            }, 100);
+
+            try {
+                const systemPrompt = "교육 공학 전문가 페르소나. 창의적 웹 서비스 기획 및 프롬프트 생성.";
+                const userPrompt = `${target} 학년 대상 '${subject}' 수업용 웹 사이트 아이디어. [아이디어 제목], [상세 프롬프트] 형식.`;
+                const result = await callGemini(userPrompt, systemPrompt);
+                
+                clearInterval(interval);
+                progressBar.style.width = '100%';
+                percentText.innerText = '100%';
+                
+                setTimeout(() => {
+                    document.getElementById('ideaText').innerText = result;
+                    document.getElementById('resultArea').classList.remove('hidden');
+                    progressArea.classList.add('hidden');
+                }, 500);
+            } catch {
+                clearInterval(interval); alert("아이디어 생성 실패.");
+            } finally { btnText.innerText = "✨ 아이디어 생성"; }
+        }
+
+        function copyPrompt() {
+            const text = document.getElementById('ideaText').innerText;
+            const copyBtn = document.getElementById('copyBtn');
+            const hiddenTextArea = document.getElementById('hiddenCopyText');
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(showSuccess).catch(() => fallbackCopy(text));
+            } else {
+                fallbackCopy(text);
+            }
+
+            function fallbackCopy(val) {
+                hiddenTextArea.value = val;
+                hiddenTextArea.focus();
+                hiddenTextArea.select();
+                try {
+                    if (document.execCommand('copy')) showSuccess();
+                    else alert("직접 드래그해서 복사해주세요.");
+                } catch { alert("복사 실패"); }
+            }
+
+            function showSuccess() {
+                const toast = document.getElementById('copyToast');
+                toast.style.opacity = '1';
+                setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+                copyBtn.innerHTML = "<span>✅ 완료!</span>";
+                setTimeout(() => { copyBtn.innerHTML = "<span>복사하기</span>"; }, 2000);
+                confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+            }
+        }
+
+        async function handleSend() {
+            const input = document.getElementById('userInput');
+            const userMsg = input.value.trim();
+            if (!userMsg) return;
+            addChatElement('user', userMsg); input.value = "";
+            const progressArea = document.getElementById('progressArea');
+            progressArea.classList.remove('hidden');
+            
+            try {
+                const result = await callGemini(userMsg + " 위 내용을 바탕으로 Tailwind CSS를 활용한 멋진 HTML 코드를 생성해줘. 반드시 코드만 출력해.", "웹 개발자");
+                generatedCode = result.replace(/```html|```/g, "").trim();
+                document.getElementById('progressBar').style.width = '100%';
+                document.getElementById('percentText').innerText = '100%';
+                addChatElement('ai', '웹사이트 제작이 완료되었습니다!');
+                document.getElementById('finalAction').classList.remove('hidden');
+            } catch { addChatElement('ai', '제작 중 오류가 발생했습니다.'); }
+        }
+
+        function openResult() {
+            const newWindow = window.open('', '_blank');
+            if(!newWindow) return alert("팝업 차단을 해제해주세요.");
+            newWindow.document.write(generatedCode); newWindow.document.close();
+        }
+
+        function addChatElement(role, msg) {
+            const win = document.getElementById('chat-window');
+            const div = document.createElement('div');
+            div.className = `${role}-bubble chat-bubble text-sm shadow-sm`;
+            div.innerText = msg; win.appendChild(div); win.scrollTop = win.scrollHeight;
+        }
+    </script>
+    <div id="copyToast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl opacity-0 transition-opacity z-[100] pointer-events-none font-bold">
+        복사되었습니다!
+    </div>
+</body>
+</html>
